@@ -1,0 +1,143 @@
+(footprint "ANT-433-HETH"
+	(version 20240108)
+	(generator "pcbnew")
+	(generator_version "8.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0 -0.5 0)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(uuid "2dd1b4d7-8f1b-4427-bdd2-c74cd41bad77")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.1)
+			)
+		)
+	)
+	(property "Value" "ANT-433-HETH"
+		(at 0 1 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(uuid "22636dc7-0bbd-4e5b-8713-44020b46cbcc")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Footprint" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "ba4d9c33-8ac7-45fb-8896-c88b9267cbf2")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "f6486bb3-acac-445b-bb75-5225b0a690fa")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "d563e924-3708-4d76-9976-8d5154a0e44d")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr through_hole)
+	(fp_line
+		(start -21 16.5)
+		(end 21 16.5)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "Cmts.User")
+		(uuid "2911200e-a1ae-4e2b-94df-ccebce9ec9ca")
+	)
+	(fp_line
+		(start -21 16.5)
+		(end 21 16.5)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "F.Fab")
+		(uuid "4e57a05c-54a2-4a78-82ff-6e84e50cfa7c")
+	)
+	(fp_text user "No copper fill"
+		(at 0 13 0)
+		(unlocked yes)
+		(layer "Cmts.User")
+		(uuid "2ff6b772-a0a2-4991-b2cf-5b13a6e75433")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 2.5 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(uuid "d6ac2a9f-5bbf-4f8b-b01a-7779c74428e1")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "1" thru_hole roundrect
+		(at -19.075 -0.05)
+		(size 3.81 7.62)
+		(drill 1.52)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(roundrect_rratio 0.0656167979)
+		(uuid "f59ad44f-a8ab-4b32-b67f-873d1d53fdc3")
+	)
+	(pad "2" thru_hole roundrect
+		(at 19.075 -0.05)
+		(size 3.81 7.62)
+		(drill 1.52)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(roundrect_rratio 0.0656167979)
+		(uuid "4522fe55-735e-4948-a2f5-71022f533688")
+	)
+	(model "${KIPRJMOD}/c-ant-433-heth-b-3d.stp"
+		(offset
+			(xyz 0 0 10)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz -90 0 0)
+		)
+	)
+)
