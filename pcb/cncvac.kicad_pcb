@@ -12303,6 +12303,15 @@
 		(uuid "2b010075-cdf3-4f13-b9a9-b7fa80f47601")
 	)
 	(via
+		(at 77.424648 68.369377)
+		(size 0.8)
+		(drill 0.5)
+		(layers "F.Cu" "B.Cu")
+		(free yes)
+		(net 18)
+		(uuid "3255492f-11f4-4889-88c1-1607bf56a865")
+	)
+	(via
 		(at 68.619665 70.791546)
 		(size 0.6)
 		(drill 0.4)
