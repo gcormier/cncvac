@@ -59,7 +59,11 @@
           "width": 0.0
         }
       ],
-      "drc_exclusions": [],
+      "drc_exclusions": [
+        "copper_edge_clearance|36566164|46666227|ed52304d-ade0-47b8-9690-ccb38690f89a|0aabe632-9896-4a0e-ba75-017d15e1855f",
+        "courtyards_overlap|76489648|69354377|805cebb0-4e62-4094-992d-d8f21891a1ce|aaa373ce-0dec-4220-bdd1-bf4c205f8c90",
+        "silk_overlap|76404648|69439377|aa9391bb-cc7a-4c58-a6e1-faa861e3f65c|a0e02ebb-0503-45bd-bcfc-a59ac3a82972"
+      ],
       "meta": {
         "filename": "board_design_settings.json",
         "version": 2
@@ -219,6 +223,10 @@
         {
           "diameter": 0.0,
           "drill": 0.0
+        },
+        {
+          "diameter": 0.58,
+          "drill": 0.3
         },
         {
           "diameter": 0.6,
