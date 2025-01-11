@@ -28,13 +28,15 @@
 #define PACKET_DELAY 100 // Milliseconds inter-packet period
 #define LIMIT_START 120  // 120*(7s) = ~15mins wakeups to transmit
 
-#define SHORTPACKETUS 350  // Short packet duration in uS
-#define LONGPACKETUS 1000   // Long packet duration in uS
+#define SHORTPACKETUS 400  // Short packet duration in uS
+#define LONGPACKETUS 850   // Long packet duration in uS
+#define WEIRDLONGPACKETUS 1220 // Fixed preamble duration in uS
+#define WEIRDSHORTPACKETUS 820 // Longer lows during system address
 #define BREAKPACKETUS 2000 // Break between packets in uS
-#define TWEAK 20           // Typically this will be your period (eg 50kHz interrupt, 20uS)
+#define TWEAK 23           // Typically this will be your period (eg 50kHz interrupt, 20uS)
                            // but you can fine tune as needed
 
-#define PACKET_RETRANSMIT 20 // How many times to resend the same packet?
+#define PACKET_RETRANSMIT 24 // How many times to resend the same packet?
 #define NO_PACKETS 1
 #define PACKET_LEN 2
 // #define PACKETSIZE (PACKET_LEN * 8)
@@ -199,7 +201,10 @@ ISR(TIMER1_COMPA_vect)
     {
       sendLow = 0;
       ASKLOW;
-      tickCounter = SHORTPACKETUS / TWEAK;
+      if (currentBit > 6 && currentBit < 9)
+        tickCounter = WEIRDSHORTPACKETUS / TWEAK;
+      else
+        tickCounter = SHORTPACKETUS / TWEAK;
       return;
     }
 
@@ -214,7 +219,11 @@ ISR(TIMER1_COMPA_vect)
     {
       // We need to send a 1 which means be high for LONGPACKETUS, then be low for SHORTPACKETUS
       ASKHIGH;
-      tickCounter = LONGPACKETUS / TWEAK; // We will lose some precision here, but it's close enough
+      // If we are doing the preamble, then we use the weird longer length
+      if (currentBit < 6)
+        tickCounter = WEIRDLONGPACKETUS / TWEAK;
+      else
+        tickCounter = LONGPACKETUS / TWEAK; // We will lose some precision here, but it's close enough
       // tickCounter = 30;
       sendLow = 1;
     }
