@@ -4,12 +4,14 @@
 #include <Arduino.h>
 #include "tpms_silencer.h"
 
-#define PIN_EN PA0           // PA0, Pin 13, Arduino 10
-#define PIN_FSK PA1          // PA1, Pin 12, Arduino 9
-#define PIN_ASK PA2          // PA2, Pin 11, Arduino 8
-#define PIN_BUTTON PA7       // PA7, Pin 6, PCINT7
-#define INTERRUPT_PIN PCINT7 // interrupt for PA7
+#define PIN_EN PA0     // PA0, Pin 13, Arduino 10
+#define PIN_FSK PA1    // PA1, Pin 12, Arduino 9
+#define PIN_ASK PA2    // PA2, Pin 11, Arduino 8
+#define PIN_BUTTON PA7 // PA7, Pin 6, PCINT7
+#define PIN_EXT_TRIG PA3
 
+#define INTERRUPT_PIN PCINT7  // interrupt for PA7
+#define INTERRUPT_PIN2 PCINT3 // interrupt for PA3
 // #define BACKOFF    // double transmit period everytime? disable to have a fixed period retrans.
 
 #define ENHIGH (bitSet(PORTA, PIN_EN))
@@ -23,22 +25,16 @@
 #define FSKLOW (bitClear(PORTA, PIN_FSK))
 #define FSKTOGGLE (PORTA = PORTA ^ _BV(PIN_FSK))
 
-#define PACKET_DELAY 40 // Milliseconds inter-packet period
-#ifdef BACKOFF
-#define LIMIT_START 1 // (re-transmit intervals: 14s, 28s, 56s, ..., MAX_LIMIT/7)
-// #define MAX_LIMIT      80 // 80 max limit ~ 10mins.
-#define MAX_LIMIT 160 // 160 max limit ~ 20 mins.
-// #define MAX_LIMIT  0xffff // uint16_t max limit ~ 5 days.
-#else
-// #define LIMIT_START     8 //   8*(7s) = ~60s wakeups to transmit
-#define LIMIT_START 120 // 120*(7s) = ~15mins wakeups to transmit
-#endif
+#define PACKET_DELAY 100 // Milliseconds inter-packet period
+#define LIMIT_START 120  // 120*(7s) = ~15mins wakeups to transmit
 
-#define SHORTPACKETUS 420  // Short packet duration in uS
-#define LONGPACKETUS 856   // Long packet duration in uS
+#define SHORTPACKETUS 350  // Short packet duration in uS
+#define LONGPACKETUS 1000   // Long packet duration in uS
 #define BREAKPACKETUS 2000 // Break between packets in uS
 #define TWEAK 20           // Typically this will be your period (eg 50kHz interrupt, 20uS)
                            // but you can fine tune as needed
+
+#define PACKET_RETRANSMIT 20 // How many times to resend the same packet?
 #define NO_PACKETS 1
 #define PACKET_LEN 2
 // #define PACKETSIZE (PACKET_LEN * 8)
@@ -63,6 +59,7 @@ volatile unsigned int wakeuplimit = LIMIT_START; // How many 8-second wakeups be
 
 volatile unsigned int tickCounter = 0; // count the number of interrupts, so we can determine how long to pulse for
 volatile unsigned int sendLow = 0;     // Tell us to send the low signal
+volatile unsigned int transmitCount;   // Countdown our transmit resends
 // setup functions
 
 // 50khz Interrupt for an 4MHz clock
@@ -88,6 +85,9 @@ void setupInterrupt4()
 
   // button interrupt
   PCMSK0 |= (1 << INTERRUPT_PIN);
+
+  // Opto interrupt
+  PCMSK0 |= (1 << INTERRUPT_PIN2);
   GIMSK |= (1 << PCIE0);
 
   interrupts();
@@ -180,7 +180,7 @@ void setup()
 #endif
   disableTX();
 
-  wakeupCounter = wakeuplimit; // force an immediate transmit
+  // wakeupCounter = wakeuplimit; // force an immediate transmit
 }
 
 // runtime functions
@@ -292,12 +292,15 @@ void loop()
 {
   if (wakeupCounter >= wakeuplimit)
   {
-    for (int i = 0; i < NO_PACKETS; i++)
+    for (transmitCount = 0; transmitCount < PACKET_RETRANSMIT; transmitCount++)
     {
-      sendPacket(i);
-      delay(100);
+      for (int i = 0; i < NO_PACKETS; i++)
+      {
+        sendPacket(i);
+        // delay(100);
+      }
+      delay(PACKET_DELAY);
     }
-    delay(100);
     // reset to wait for next tx
     wakeupCounter = 0;
   }
