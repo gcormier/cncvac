@@ -22,7 +22,6 @@
 #define FSKLOW (bitClear(PORTA, PIN_FSK))
 
 #define PACKET_DELAY 100 // Milliseconds inter-packet period
-#define LIMIT_START 120  // 120*(7s) = ~15mins wakeups to transmit
 
 #define SHORTPACKETUS 410  // Short packet duration in uS
 #define LONGPACKETUS 860   // Long packet duration in uS
@@ -30,12 +29,12 @@
 
 #define WEIRDLONGPACKETUS 1220 // Fixed preamble duration in uS
 #define WEIRDSHORTPACKETUS 820 // Longer lows during system address
-#define BREAKPACKETUS 2000 // Break between packets in uS
-#define TWEAK 23           // Typically this will be your period (eg 50kHz interrupt, 20uS)
-                           // but you can fine tune as needed
+#define BREAKPACKETUS 2000     // Break between packets in uS
+#define TWEAK 23               // Typically this will be your period (eg 50kHz interrupt, 20uS)
+                               // but you can fine tune as needed
 
 #define PACKET_RETRANSMIT 24 // How many times to resend the same packet?
-#define PACKET_SIZE 13 // We only actually want 13 bits here
+#define PACKET_SIZE 13       // We only actually want 13 bits here
 
 /*
              xxxx xx98 7654 3210
@@ -43,14 +42,14 @@ Bit position 1234 5678 1234 5678
              IIII IISS CTTT P000
 */
 
-#define BIT_SYS1   9
-#define BIT_SYS0   8
-#define BIT_ONOFF  7
-#define BIT_TOOL2  6
-#define BIT_TOOL1  5
-#define BIT_TOOL0  4
+#define BIT_SYS1 9
+#define BIT_SYS0 8
+#define BIT_ONOFF 7
+#define BIT_TOOL2 6
+#define BIT_TOOL1 5
+#define BIT_TOOL0 4
 #define BIT_PARITY 3
-#define FIXED      33792  // This is the fixed preamble
+#define FIXED 33792 // This is the fixed preamble
 
 // on is
 // IIII IISS CTTT P 000
@@ -64,12 +63,11 @@ const unsigned short onPacket = FIXED | (1 << BIT_ONOFF) | (1 << BIT_TOOL2) | (1
 const unsigned short offPacket = FIXED | (1 << BIT_TOOL2) | (1 << BIT_TOOL1) | (1 << BIT_TOOL0);
 
 volatile unsigned short currentPacket = onPacket;
-volatile unsigned int currentBit;  // which bit in that packet is next
+volatile unsigned int currentBit; // which bit in that packet is next
 
 volatile bool transmitting = false; // indicates if transmitting a packet
 
-volatile unsigned int wakeupCounter = 0;         // how many 8s watchdog timeouts since last transmit
-volatile unsigned int wakeuplimit = LIMIT_START; // How many 8-second wakeups before transmit again
+volatile unsigned int wakeupReason = 0; // 1 = button, 2 = aux
 
 volatile unsigned int tickCounter = 0; // count the number of interrupts, so we can determine how long to pulse for
 volatile unsigned int sendLow = 0;     // Tell us to send the low signal
@@ -226,7 +224,7 @@ ISR(TIMER1_COMPA_vect)
     {
       sendLow = 0;
       ASKLOW;
-      if (currentBit < 6)  // Preamble
+      if (currentBit < 6) // Preamble
         tickCounter = SHORTPACKETUS / TWEAK;
       else // We are done the preamble, go to fixed width
       {
@@ -237,7 +235,7 @@ ISR(TIMER1_COMPA_vect)
         else
           tickCounter = (TOTALPACKETUS - SHORTPACKETUS) / TWEAK;
       }
-        
+
       return;
     }
 
@@ -274,14 +272,19 @@ ISR(TIMER1_COMPA_vect)
 // button interrupt is setup by setupInterrupt8()
 ISR(PCINT0_vect)
 {
+  delay(50);
   // could use a +300ms debounce here, but its not critcal if we transmit packets twice...
   if (digitalRead(PIN_BUTTON) == LOW)
+    wakeupReason = 1;
+  else if (digitalRead(PIN_EXT_TRIG) == LOW)
   {
-    // button press. wakeup, transmit and set initial retransmit period
-    wakeuplimit = LIMIT_START;
-    wakeupCounter = wakeuplimit;
-    //} else {
-    // button release
+    wakeupReason = 2;
+    currentPacket = offPacket;
+  }
+  else if (digitalRead(PIN_EXT_TRIG) == HIGH)
+  {
+    wakeupReason = 2;
+    currentPacket = onPacket;
   }
 }
 
@@ -330,7 +333,7 @@ void disableTX()
 
 void loop()
 {
-  if (wakeupCounter >= wakeuplimit)
+  if (wakeupReason == 1)
   {
     for (transmitCount = 0; transmitCount < PACKET_RETRANSMIT; transmitCount++)
     {
@@ -338,15 +341,15 @@ void loop()
       delay(PACKET_DELAY);
     }
     // reset to wait for next tx
-    wakeupCounter = 0;
+    wakeupReason = 0;
 
-  if (currentPacket == onPacket)
-    currentPacket = offPacket;
-  else
-    currentPacket = onPacket;
-
+    // Swap packets in case it was the button used for debugging.
+    // Otherwise the aux input will set the currentPacket based on high/low status of aux input
+    if (currentPacket == onPacket)
+      currentPacket = offPacket;
+    else
+      currentPacket = onPacket;
   }
-
 
   sleepyTime();
 }
