@@ -9,27 +9,25 @@
 #define PIN_ASK PA2    // PA2, Pin 11, Arduino 8
 #define PIN_BUTTON PA7 // PA7, Pin 6, PCINT7
 #define PIN_EXT_TRIG PA3
-
 #define INTERRUPT_PIN PCINT7  // interrupt for PA7
 #define INTERRUPT_PIN2 PCINT3 // interrupt for PA3
-// #define BACKOFF    // double transmit period everytime? disable to have a fixed period retrans.
 
 #define ENHIGH (bitSet(PORTA, PIN_EN))
 #define ENLOW (bitClear(PORTA, PIN_EN))
 
 #define ASKHIGH (bitSet(PORTA, PIN_ASK))
 #define ASKLOW (bitClear(PORTA, PIN_ASK))
-#define ASKTOGGLE (PORTA = PORTA ^ _BV(PIN_ASK))
 
 #define FSKHIGH (bitSet(PORTA, PIN_FSK))
 #define FSKLOW (bitClear(PORTA, PIN_FSK))
-#define FSKTOGGLE (PORTA = PORTA ^ _BV(PIN_FSK))
 
 #define PACKET_DELAY 100 // Milliseconds inter-packet period
 #define LIMIT_START 120  // 120*(7s) = ~15mins wakeups to transmit
 
-#define SHORTPACKETUS 400  // Short packet duration in uS
-#define LONGPACKETUS 850   // Long packet duration in uS
+#define SHORTPACKETUS 410  // Short packet duration in uS
+#define LONGPACKETUS 860   // Long packet duration in uS
+#define TOTALPACKETUS 1250 // Total packet duration in uS for fix-bit width PWM
+
 #define WEIRDLONGPACKETUS 1220 // Fixed preamble duration in uS
 #define WEIRDSHORTPACKETUS 820 // Longer lows during system address
 #define BREAKPACKETUS 2000 // Break between packets in uS
@@ -37,21 +35,35 @@
                            // but you can fine tune as needed
 
 #define PACKET_RETRANSMIT 24 // How many times to resend the same packet?
-#define NO_PACKETS 1
-#define PACKET_LEN 2
-// #define PACKETSIZE (PACKET_LEN * 8)
-#define PACKETSIZE 13 // We only actually want 13 bits here
+#define PACKET_SIZE 13 // We only actually want 13 bits here
+
+/*
+             xxxx xx98 7654 3210
+Bit position 1234 5678 1234 5678
+             IIII IISS CTTT P000
+*/
+
+#define BIT_SYS1   9
+#define BIT_SYS0   8
+#define BIT_ONOFF  7
+#define BIT_TOOL2  6
+#define BIT_TOOL1  5
+#define BIT_TOOL0  4
+#define BIT_PARITY 3
+#define FIXED      33792  // This is the fixed preamble
 
 // on is
-// 0b 10000100 0b11111000
+// IIII IISS CTTT P 000
+// 1000 0100 1111 1 000
 // off is
-// 0b 10000100 0b01110000
+// 0b 10000100 0b0111 0 000
 
-const unsigned char packets[NO_PACKETS][PACKET_LEN] = {
-    // packet 0
-    {B10000100, B11111000}};
+// This is where you define your on/off packet. You really need to only change the TOOL bits and the SYS bits.
+// Even number of 1's? Set the bit parity flag.
+const unsigned short onPacket = FIXED | (1 << BIT_ONOFF) | (1 << BIT_TOOL2) | (1 << BIT_TOOL1) | (1 << BIT_TOOL0) | (1 << BIT_PARITY);
+const unsigned short offPacket = FIXED | (1 << BIT_TOOL2) | (1 << BIT_TOOL1) | (1 << BIT_TOOL0);
 
-volatile unsigned char packet = 0; // which packet is being sent 0 - NO_PACKETS-1
+volatile unsigned short currentPacket = onPacket;
 volatile unsigned int currentBit;  // which bit in that packet is next
 
 volatile bool transmitting = false; // indicates if transmitting a packet
@@ -62,7 +74,21 @@ volatile unsigned int wakeuplimit = LIMIT_START; // How many 8-second wakeups be
 volatile unsigned int tickCounter = 0; // count the number of interrupts, so we can determine how long to pulse for
 volatile unsigned int sendLow = 0;     // Tell us to send the low signal
 volatile unsigned int transmitCount;   // Countdown our transmit resends
+volatile unsigned int previousBit = 0;
+
 // setup functions
+
+void calculateParity(unsigned short data)
+{
+  bool parityVal = false;
+  for (int bit = 0; bit < 12; bit++)
+  {
+    // Calculate the parity of the first 12 bits in data, and store it in the 13th bit
+    if (data & (1 << bit))
+      parityVal = !parityVal;
+  }
+  data |= parityVal << 12;
+}
 
 // 50khz Interrupt for an 4MHz clock
 // 50khz = 20uS
@@ -187,7 +213,6 @@ void setup()
 
 // runtime functions
 
-// 100 usec timer for bit tx
 ISR(TIMER1_COMPA_vect)
 {
   if (transmitting)
@@ -201,21 +226,29 @@ ISR(TIMER1_COMPA_vect)
     {
       sendLow = 0;
       ASKLOW;
-      if (currentBit > 6 && currentBit < 9)
-        tickCounter = WEIRDSHORTPACKETUS / TWEAK;
-      else
+      if (currentBit < 6)  // Preamble
         tickCounter = SHORTPACKETUS / TWEAK;
+      else // We are done the preamble, go to fixed width
+      {
+        previousBit = currentPacket & (0x8000 >> (currentBit - 1));
+        // If the previous bit (the one we are currently transmitting) is a 1, we need to send a shorter low pulse then a 0 bit.
+        if (previousBit)
+          tickCounter = (TOTALPACKETUS - LONGPACKETUS) / TWEAK;
+        else
+          tickCounter = (TOTALPACKETUS - SHORTPACKETUS) / TWEAK;
+      }
+        
       return;
     }
 
-    if (currentBit >= PACKETSIZE) // end of packet
+    if (currentBit >= PACKET_SIZE) // end of packet
     {
       disableTX();
       return;
     }
 
     // read off bits in bigendian order
-    if ((packets[packet][currentBit / 8] & (0x80 >> (currentBit % 8))))
+    if (currentPacket & (0x8000 >> currentBit))
     {
       // We need to send a 1 which means be high for LONGPACKETUS, then be low for SHORTPACKETUS
       ASKHIGH;
@@ -223,15 +256,14 @@ ISR(TIMER1_COMPA_vect)
       if (currentBit < 6)
         tickCounter = WEIRDLONGPACKETUS / TWEAK;
       else
-        tickCounter = LONGPACKETUS / TWEAK; // We will lose some precision here, but it's close enough
-      // tickCounter = 30;
+        tickCounter = LONGPACKETUS / TWEAK;
+
       sendLow = 1;
     }
     else
     {
       ASKHIGH;
-      tickCounter = SHORTPACKETUS / TWEAK; // We will lose some precision here, but it's close enough
-      // tickCounter = 4;
+      tickCounter = SHORTPACKETUS / TWEAK;
       sendLow = 1;
     }
 
@@ -267,11 +299,10 @@ void sleepyTime()
 }
 
 // queue up and prepare to send a packet
-void sendPacket(unsigned int which)
+void sendPacket(unsigned short whichPacket)
 {
-  packet = min(which, NO_PACKETS - 1);
+  currentPacket = whichPacket;
   currentBit = 0;
-
   enableTX();
 }
 
@@ -303,16 +334,19 @@ void loop()
   {
     for (transmitCount = 0; transmitCount < PACKET_RETRANSMIT; transmitCount++)
     {
-      for (int i = 0; i < NO_PACKETS; i++)
-      {
-        sendPacket(i);
-        // delay(100);
-      }
+      sendPacket(currentPacket);
       delay(PACKET_DELAY);
     }
     // reset to wait for next tx
     wakeupCounter = 0;
+
+  if (currentPacket == onPacket)
+    currentPacket = offPacket;
+  else
+    currentPacket = onPacket;
+
   }
+
 
   sleepyTime();
 }
