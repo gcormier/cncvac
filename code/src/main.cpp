@@ -194,6 +194,7 @@ void setup()
   pinMode(PIN_FSK, OUTPUT);
   pinMode(PIN_ASK, OUTPUT);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
+  pinMode(PIN_EXT_TRIG, INPUT);
 
 #if F_CPU == 16000000L
   setupInterrupt16();
