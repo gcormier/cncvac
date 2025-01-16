@@ -4,13 +4,19 @@
 #include <Arduino.h>
 #include "tpms_silencer.h"
 
-#define PIN_EN PA0     // PA0, Pin 13, Arduino 10
-#define PIN_FSK PA1    // PA1, Pin 12, Arduino 9
-#define PIN_ASK PA2    // PA2, Pin 11, Arduino 8
-#define PIN_BUTTON PA7 // PA7, Pin 6, PCINT7
-#define PIN_EXT_TRIG PA3
-#define INTERRUPT_PIN PCINT7  // interrupt for PA7
-#define INTERRUPT_PIN2 PCINT3 // interrupt for PA3
+///// Pinout https://github.com/SpenceKonde/ATTinyCore/blob/v2.0.0-devThis-is-the-head-submit-PRs-against-this/avr/extras/Pinout_x41.jpg
+// Misery.
+// PA0 or PORTA0 is defined by shitty platformio Atmel libraries and is broken
+// A8 is defined by tinyavr and uses the clockwise/counterclockwise mapping. but it seems to break after a bit.
+// Use raw numbers and test each output to make sure it works.
+
+#define PIN_EN 0     // PA0, Pin 13, Arduino 10
+#define PIN_FSK 1  // PA1, Pin 12, Arduino 9
+#define PIN_ASK 2    // PA2, Pin 11, Arduino 8
+#define PIN_BUTTON 7 // PA7, Pin 6, PCINT7
+#define PIN_EXT_TRIG 3
+#define PIN_MISC 8
+
 
 #define ENHIGH (bitSet(PORTA, PIN_EN))
 #define ENLOW (bitClear(PORTA, PIN_EN))
@@ -110,10 +116,10 @@ void setupInterrupt4()
   TIMSK1 |= (1 << OCIE1A);
 
   // button interrupt
-  PCMSK0 |= (1 << INTERRUPT_PIN);
+  PCMSK0 |= (1 << PIN_BUTTON);
 
   // Opto interrupt
-  PCMSK0 |= (1 << INTERRUPT_PIN2);
+  PCMSK0 |= (1 << PIN_EXT_TRIG);
   GIMSK |= (1 << PCIE0);
 
   interrupts();
@@ -138,7 +144,9 @@ void setupInterrupt8()
   TIMSK1 |= (1 << OCIE1A);
 
   // button interrupt
-  PCMSK0 |= (1 << INTERRUPT_PIN);
+  PCMSK0 |= (1 << PIN_BUTTON);
+  // Opto interrupt
+  PCMSK0 |= (1 << PIN_EXT_TRIG);
   GIMSK |= (1 << PCIE0);
 
   interrupts();
@@ -163,7 +171,9 @@ void setupInterrupt16()
   TIMSK1 |= (1 << OCIE1A);
 
   // button interrupt
-  PCMSK0 |= (1 << INTERRUPT_PIN);
+  PCMSK0 |= (1 << PIN_BUTTON);
+  // Opto interrupt
+  PCMSK0 |= (1 << PIN_EXT_TRIG);
   GIMSK |= (1 << PCIE0);
 
   interrupts();
@@ -195,6 +205,17 @@ void setup()
   pinMode(PIN_ASK, OUTPUT);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_EXT_TRIG, INPUT);
+  pinMode(PIN_MISC, OUTPUT);
+
+  /*unsigned int testing = PIN_EXT_TRIG;
+  pinMode(testing, PIN_BUTTON);
+  while (true)
+  {
+    digitalWrite(testing, HIGH);
+    delay(500);
+    digitalWrite(testing, LOW);
+    delay(500);
+  }*/
 
 #if F_CPU == 16000000L
   setupInterrupt16();
@@ -206,8 +227,6 @@ void setup()
 #error CPU is not set to 16MHz or 8MHz!
 #endif
   disableTX();
-
-  // wakeupCounter = wakeuplimit; // force an immediate transmit
 }
 
 // runtime functions
@@ -279,11 +298,13 @@ ISR(PCINT0_vect)
     wakeupReason = 1;
   else if (digitalRead(PIN_EXT_TRIG) == LOW)
   {
+    digitalWrite(PIN_MISC, LOW);
     wakeupReason = 2;
     currentPacket = offPacket;
   }
   else if (digitalRead(PIN_EXT_TRIG) == HIGH)
   {
+    digitalWrite(PIN_MISC, HIGH);
     wakeupReason = 2;
     currentPacket = onPacket;
   }
