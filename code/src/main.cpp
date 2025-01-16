@@ -205,7 +205,7 @@ void setup()
   pinMode(PIN_ASK, OUTPUT);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_EXT_TRIG, INPUT);
-  pinMode(PIN_MISC, OUTPUT);
+  //pinMode(PIN_MISC, OUTPUT);
 
   /*unsigned int testing = PIN_EXT_TRIG;
   pinMode(testing, PIN_BUTTON);
@@ -298,13 +298,13 @@ ISR(PCINT0_vect)
     wakeupReason = 1;
   else if (digitalRead(PIN_EXT_TRIG) == LOW)
   {
-    digitalWrite(PIN_MISC, LOW);
+    //digitalWrite(PIN_MISC, LOW);
     wakeupReason = 2;
     currentPacket = offPacket;
   }
   else if (digitalRead(PIN_EXT_TRIG) == HIGH)
   {
-    digitalWrite(PIN_MISC, HIGH);
+    //digitalWrite(PIN_MISC, HIGH);
     wakeupReason = 2;
     currentPacket = onPacket;
   }
@@ -355,7 +355,7 @@ void disableTX()
 
 void loop()
 {
-  if (wakeupReason == 1)
+  if (wakeupReason > 0)
   {
     for (transmitCount = 0; transmitCount < PACKET_RETRANSMIT; transmitCount++)
     {
