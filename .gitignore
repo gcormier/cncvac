@@ -31,4 +31,5 @@ fp-info-cache
 pcb/3DxService.log
 secrets.yaml
 .esphome/*
-pcb/enclosurepanel/3DxService.log
+*3DxService.log
+
