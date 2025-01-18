@@ -9,3 +9,16 @@ It has an opto-isolated input controlled by a 5-24V logic signal.
 
 ### Case
 This fits in a [Hammond 1593P case](https://www.digikey.ca/en/products/detail/hammond-manufacturing/1593PBK/270098) and can use their [battery holder](https://www.digikey.ca/en/products/detail/hammond-manufacturing/BH3AAAW/3869833) as well.
+
+### Power Consumption
+#### Transmitting
+1mV = 1uA
+1-3mA while transmitting
+
+![Power Consumption](transmit-uA.jpeg)
+
+#### Sleep/Idle
+1mV = 1nA
+Better than 1.2uA while sleeping
+Based on the average capacity of two AA NiMH batteries, 2000mAh, this should last almost 200 years.
+![Power Consumption](idle-nA.jpeg)
