@@ -2,7 +2,7 @@
 #include <avr/power.h>
 #include <avr/sleep.h>
 #include <Arduino.h>
-#include "tpms_silencer.h"
+#include "cncvac.h"
 
 ///// Pinout https://github.com/SpenceKonde/ATTinyCore/blob/v2.0.0-devThis-is-the-head-submit-PRs-against-this/avr/extras/Pinout_x41.jpg
 // Misery.
@@ -39,7 +39,7 @@
 #define TWEAK 23               // Typically this will be your period (eg 50kHz interrupt, 20uS)
                                // but you can fine tune as needed
 
-#define PACKET_RETRANSMIT 24 // How many times to resend the same packet?
+#define PACKET_RETRANSMIT 12 // How many times to resend the same packet?
 #define PACKET_SIZE 13       // We only actually want 13 bits here
 
 /*
@@ -55,13 +55,7 @@ Bit position 1234 5678 1234 5678
 #define BIT_TOOL1 5
 #define BIT_TOOL0 4
 #define BIT_PARITY 3
-#define FIXED 33792 // This is the fixed preamble
-
-// on is
-// IIII IISS CTTT P 000
-// 1000 0100 1111 1 000
-// off is
-// 0b 10000100 0b0111 0 000
+#define FIXED 33792 // This is the fixed preamble. Do not change.
 
 // This is where you define your on/off packet. You really need to only change the TOOL bits and the SYS bits.
 // Even number of 1's? Set the bit parity flag.
@@ -205,17 +199,6 @@ void setup()
   pinMode(PIN_ASK, OUTPUT);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_EXT_TRIG, INPUT);
-  //pinMode(PIN_MISC, OUTPUT);
-
-  /*unsigned int testing = PIN_EXT_TRIG;
-  pinMode(testing, PIN_BUTTON);
-  while (true)
-  {
-    digitalWrite(testing, HIGH);
-    delay(500);
-    digitalWrite(testing, LOW);
-    delay(500);
-  }*/
 
 #if F_CPU == 16000000L
   setupInterrupt16();
@@ -224,7 +207,7 @@ void setup()
 #elif F_CPU == 4000000L
   setupInterrupt4();
 #else
-#error CPU is not set to 16MHz or 8MHz!
+#error Cannot set interrupt based on current clock frequency!
 #endif
   disableTX();
 }
