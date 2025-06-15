@@ -12685,8 +12685,8 @@
 			(justify left bottom)
 		)
 	)
-	(gr_text "cncvac\ngithub.com/gcormier/cncvac\nv3"
-		(at 58.524648 42.069377 0)
+	(gr_text "cncvac\ngithub.com/gcormier/cncvac\n<<hash>>"
+		(at 58.524648 58.389377 0)
 		(layer "F.SilkS")
 		(uuid "7eb2ce19-6805-4b25-9e60-a4dde20d0acb")
 		(effects
@@ -12718,18 +12718,6 @@
 				(thickness 0.15)
 			)
 			(justify left bottom)
-		)
-	)
-	(gr_text "<<hash>>"
-		(at 79.944314 47.364377 90)
-		(layer "F.SilkS")
-		(uuid "9ab15cc5-6f1e-4afa-9e78-c10cbf2a6460")
-		(effects
-			(font
-				(size 1 1)
-				(thickness 0.2)
-			)
-			(justify right)
 		)
 	)
 	(gr_text "1 2 4 5 6"
