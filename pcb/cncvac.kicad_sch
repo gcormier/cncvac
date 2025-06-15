@@ -10583,7 +10583,7 @@
 				)
 			)
 		)
-		(property "Value" "LTV-357T"
+		(property "Value" "EL357N"
 			(at 43.18 62.23 0)
 			(effects
 				(font
@@ -10621,7 +10621,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C6649"
+		(property "LCSC" "C42381015"
 			(at 43.18 64.77 0)
 			(effects
 				(font
