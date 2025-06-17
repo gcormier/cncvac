@@ -3351,7 +3351,7 @@
 		(path "/00000000-0000-0000-0000-00005bbc6af7")
 		(sheetname "/")
 		(sheetfile "cncvac.kicad_sch")
-		(attr through_hole)
+		(attr through_hole exclude_from_bom dnp)
 		(fp_line
 			(start -21 16.5)
 			(end 21 16.5)
@@ -5861,7 +5861,7 @@
 				)
 			)
 		)
-		(property "Value" "LTV-357T"
+		(property "Value" "EL357N"
 			(at 0 2.8 0)
 			(layer "F.Fab")
 			(uuid "2746cd4b-50a1-406b-b025-bf152a76adc0")
@@ -5898,7 +5898,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C6649"
+		(property "LCSC" "C42381015"
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
