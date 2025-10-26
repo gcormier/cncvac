@@ -21,7 +21,7 @@
 #define PIN_DIP1 3   // PA3 - SYS bit 1
 #define PIN_DIP2 5   // PA5 - SYS bit 0
 #define PIN_DIP3 4   // PA4 - TOOL bit 2
-#define PIN_DIP4 10  // PB2 - TOOL bit 1
+#define PIN_DIP4 8  // PB2 - TOOL bit 1
 #define PIN_DIP5 6   // PA6 - TOOL bit 0
 
 
