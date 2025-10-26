@@ -17,6 +17,13 @@
 #define PIN_EXT_TRIG 3
 #define PIN_MISC 8
 
+// DIP switch pins for configuration
+#define PIN_DIP1 3   // PA3 - SYS bit 1
+#define PIN_DIP2 5   // PA5 - SYS bit 0
+#define PIN_DIP3 4   // PA4 - TOOL bit 2
+#define PIN_DIP4 10  // PB2 - TOOL bit 1
+#define PIN_DIP5 6   // PA6 - TOOL bit 0
+
 
 #define ENHIGH (bitSet(PORTA, PIN_EN))
 #define ENLOW (bitClear(PORTA, PIN_EN))
@@ -59,8 +66,9 @@ Bit position 1234 5678 1234 5678
 
 // This is where you define your on/off packet. You really need to only change the TOOL bits and the SYS bits.
 // Even number of 1's? Set the bit parity flag.
-const unsigned short onPacket = FIXED | (1 << BIT_ONOFF) | (1 << BIT_TOOL2) | (1 << BIT_TOOL1) | (1 << BIT_TOOL0) | (1 << BIT_PARITY);
-const unsigned short offPacket = FIXED | (1 << BIT_TOOL2) | (1 << BIT_TOOL1) | (1 << BIT_TOOL0);
+// These will be set during setup() based on DIP switch configuration
+unsigned short onPacket = 0;
+unsigned short offPacket = 0;
 
 volatile unsigned short currentPacket = onPacket;
 volatile unsigned int currentBit; // which bit in that packet is next
@@ -76,7 +84,7 @@ volatile unsigned int previousBit = 0;
 
 // setup functions
 
-void calculateParity(unsigned short data)
+unsigned short calculateParity(unsigned short data)
 {
   bool parityVal = false;
   for (int bit = 0; bit < 12; bit++)
@@ -85,7 +93,40 @@ void calculateParity(unsigned short data)
     if (data & (1 << bit))
       parityVal = !parityVal;
   }
-  data |= parityVal << 12;
+  // If there's an even number of 1's, set the parity bit
+  if (!parityVal)
+    data |= (1 << BIT_PARITY);
+  
+  return data;
+}
+
+void readDIPSwitchAndConfigurePackets()
+{
+  // Read DIP switch settings
+  // DIP switches are active HIGH (pulled low by default, connected to VCC when ON)
+  uint8_t sys1 = digitalRead(PIN_DIP1);   // PA3
+  uint8_t sys0 = digitalRead(PIN_DIP2);   // PA5
+  uint8_t tool2 = digitalRead(PIN_DIP3);  // PA4
+  uint8_t tool1 = digitalRead(PIN_DIP4);  // PB2
+  uint8_t tool0 = digitalRead(PIN_DIP5);  // PA6
+  
+  // Build the base packet with FIXED preamble
+  unsigned short basePacket = FIXED;
+  
+  // Add SYS bits
+  if (sys1) basePacket |= (1 << BIT_SYS1);
+  if (sys0) basePacket |= (1 << BIT_SYS0);
+  
+  // Add TOOL bits
+  if (tool2) basePacket |= (1 << BIT_TOOL2);
+  if (tool1) basePacket |= (1 << BIT_TOOL1);
+  if (tool0) basePacket |= (1 << BIT_TOOL0);
+  
+  // Create OFF packet (without ON/OFF bit) and calculate parity
+  offPacket = calculateParity(basePacket);
+  
+  // Create ON packet (with ON/OFF bit set) and calculate parity
+  onPacket = calculateParity(basePacket | (1 << BIT_ONOFF));
 }
 
 // 50khz Interrupt for an 4MHz clock
@@ -199,6 +240,17 @@ void setup()
   pinMode(PIN_ASK, OUTPUT);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_EXT_TRIG, INPUT);
+  
+  // Configure DIP switch pins as inputs (external pulldown resistors)
+  pinMode(PIN_DIP1, INPUT);
+  pinMode(PIN_DIP2, INPUT);
+  pinMode(PIN_DIP3, INPUT);
+  pinMode(PIN_DIP4, INPUT);
+  pinMode(PIN_DIP5, INPUT);
+  
+  // Read DIP switches and configure packets - only needs to be done once at startup
+  // The AVR maintains state and ISRs will use the globally set packet values
+  readDIPSwitchAndConfigurePackets();
 
 #if F_CPU == 16000000L
   setupInterrupt16();
