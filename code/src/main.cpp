@@ -84,11 +84,11 @@ volatile unsigned int previousBit = 0;
 unsigned short calculateParity(unsigned short data)
 {
   bool parityVal = false;
-  // Calculate the parity of bits 4-9 (TOOL0, TOOL1, TOOL2, ONOFF, SYS0, SYS1)
-  // Don't include bit 3 (parity bit itself) or bits 0-2 (always 0)
-  // Don't include bits 10-15 (the 6-bit fixed preamble)
-  for (int bit = 4; bit <= 9; bit++)
+  // Calculate the parity of the entire packet except bit 3 (parity bit itself)
+  // This includes bits 0-2 (fixed zeros), bits 4-15 (TOOL, ONOFF, SYS, and preamble)
+  for (int bit = 0; bit < 16; bit++)
   {
+    if (bit == BIT_PARITY) continue; // Skip the parity bit itself
     if (data & (1 << bit))
       parityVal = !parityVal;
   }
@@ -103,54 +103,11 @@ void readDIPSwitchAndConfigurePackets()
 {
   // Read DIP switch settings
   // DIP switches are active HIGH (pulled low by default, connected to VCC when ON)
-  uint8_t sys1 = !digitalRead(PIN_DIP1);   // PA3
-  uint8_t sys0 = !digitalRead(PIN_DIP2);   // PA5
-  uint8_t tool2 = !digitalRead(PIN_DIP3);  // PA4
-  uint8_t tool1 = !digitalRead(PIN_DIP4);  // PB2
-  uint8_t tool0 = !digitalRead(PIN_DIP5);  // PA6
-  
-  // DEBUG: Output DIP switch states on DATA pin
-  // Pattern: HIGH pulse (250ms), then DIP value pulse (250ms)
-  while(0) {
-    // DIP1 (SYS1)
-    DATAHIGH;
-    delay(250);
-    if (sys1) DATAHIGH; else DATALOW;
-    delay(250);
-    DATALOW;
-    delay(500);
-    // DIP2 (SYS0)
-    DATAHIGH;
-    delay(250);
-    if (sys0) DATAHIGH; else DATALOW;
-    delay(250);
-        DATALOW;
-    delay(500);
-    // DIP3 (TOOL2)
-    DATAHIGH;
-    delay(250);
-    if (tool2) DATAHIGH; else DATALOW;
-    delay(250);
-        DATALOW;
-    delay(500);
-    // DIP4 (TOOL1)
-    DATAHIGH;
-    delay(250);
-    if (tool1) DATAHIGH; else DATALOW;
-    delay(250);
-        DATALOW;
-    delay(500);
-    // DIP5 (TOOL0)
-    DATAHIGH;
-    delay(250);
-    if (tool0) DATAHIGH; else DATALOW;
-    delay(250);
-        DATALOW;
-    delay(500);
-    // Pause between sequences
-    DATALOW;
-    delay(4000);
-  }
+  uint8_t sys0 = !digitalRead(PIN_DIP1);   // PA3 - DIP1 is SYS bit 0 (lower bit)
+  uint8_t sys1 = !digitalRead(PIN_DIP2);   // PA5 - DIP2 is SYS bit 1 (upper bit)
+  uint8_t tool0 = !digitalRead(PIN_DIP3);  // PA4 - DIP3 is TOOL bit 0 (lower bit)
+  uint8_t tool1 = !digitalRead(PIN_DIP4);  // PB2 - DIP4 is TOOL bit 1 (middle bit)
+  uint8_t tool2 = !digitalRead(PIN_DIP5);  // PA6 - DIP5 is TOOL bit 2 (upper bit)
   
   // Build the base packet with FIXED preamble
   unsigned short basePacket = FIXED;
