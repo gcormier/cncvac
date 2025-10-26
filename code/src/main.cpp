@@ -10,29 +10,26 @@
 // A8 is defined by tinyavr and uses the clockwise/counterclockwise mapping. but it seems to break after a bit.
 // Use raw numbers and test each output to make sure it works.
 
-#define PIN_EN 0     // PA0, Pin 13, Arduino 10
-#define PIN_FSK 1  // PA1, Pin 12, Arduino 9
-#define PIN_ASK 2    // PA2, Pin 11, Arduino 8
-#define PIN_BUTTON 7 // PA7, Pin 6, PCINT7
-#define PIN_EXT_TRIG 3
-#define PIN_MISC 8
+#define PIN_EN 0        // PA0, Pin 13, Arduino 10
+#define PIN_DATA 1      // PA1, Pin 11, Arduino 8
+#define PIN_BUTTON 7    // PA7, Pin 6, PCINT7
+#define PIN_EXT_TRIG 2
+
 
 // DIP switch pins for configuration
-#define PIN_DIP1 3   // PA3 - SYS bit 1
-#define PIN_DIP2 5   // PA5 - SYS bit 0
-#define PIN_DIP3 4   // PA4 - TOOL bit 2
-#define PIN_DIP4 8  // PB2 - TOOL bit 1
-#define PIN_DIP5 6   // PA6 - TOOL bit 0
+#define PIN_DIP1 3    // PA3 - SYS bit 1
+#define PIN_DIP2 5    // PA5 - SYS bit 0
+#define PIN_DIP3 4    // PA4 - TOOL bit 2
+#define PIN_DIP4 8    // PB2 - TOOL bit 1
+#define PIN_DIP5 6    // PA6 - TOOL bit 0
 
 
 #define ENHIGH (bitSet(PORTA, PIN_EN))
 #define ENLOW (bitClear(PORTA, PIN_EN))
 
-#define ASKHIGH (bitSet(PORTA, PIN_ASK))
-#define ASKLOW (bitClear(PORTA, PIN_ASK))
+#define DATAHIGH (bitSet(PORTA, PIN_DATA))
+#define DATALOW (bitClear(PORTA, PIN_DATA))
 
-#define FSKHIGH (bitSet(PORTA, PIN_FSK))
-#define FSKLOW (bitClear(PORTA, PIN_FSK))
 
 #define PACKET_DELAY 100 // Milliseconds inter-packet period
 
@@ -87,9 +84,11 @@ volatile unsigned int previousBit = 0;
 unsigned short calculateParity(unsigned short data)
 {
   bool parityVal = false;
-  for (int bit = 0; bit < 12; bit++)
+  // Calculate the parity of bits 4-9 (TOOL0, TOOL1, TOOL2, ONOFF, SYS0, SYS1)
+  // Don't include bit 3 (parity bit itself) or bits 0-2 (always 0)
+  // Don't include bits 10-15 (the 6-bit fixed preamble)
+  for (int bit = 4; bit <= 9; bit++)
   {
-    // Calculate the parity of the first 12 bits in data, and store it in the 13th bit
     if (data & (1 << bit))
       parityVal = !parityVal;
   }
@@ -104,11 +103,54 @@ void readDIPSwitchAndConfigurePackets()
 {
   // Read DIP switch settings
   // DIP switches are active HIGH (pulled low by default, connected to VCC when ON)
-  uint8_t sys1 = digitalRead(PIN_DIP1);   // PA3
-  uint8_t sys0 = digitalRead(PIN_DIP2);   // PA5
-  uint8_t tool2 = digitalRead(PIN_DIP3);  // PA4
-  uint8_t tool1 = digitalRead(PIN_DIP4);  // PB2
-  uint8_t tool0 = digitalRead(PIN_DIP5);  // PA6
+  uint8_t sys1 = !digitalRead(PIN_DIP1);   // PA3
+  uint8_t sys0 = !digitalRead(PIN_DIP2);   // PA5
+  uint8_t tool2 = !digitalRead(PIN_DIP3);  // PA4
+  uint8_t tool1 = !digitalRead(PIN_DIP4);  // PB2
+  uint8_t tool0 = !digitalRead(PIN_DIP5);  // PA6
+  
+  // DEBUG: Output DIP switch states on DATA pin
+  // Pattern: HIGH pulse (250ms), then DIP value pulse (250ms)
+  while(0) {
+    // DIP1 (SYS1)
+    DATAHIGH;
+    delay(250);
+    if (sys1) DATAHIGH; else DATALOW;
+    delay(250);
+    DATALOW;
+    delay(500);
+    // DIP2 (SYS0)
+    DATAHIGH;
+    delay(250);
+    if (sys0) DATAHIGH; else DATALOW;
+    delay(250);
+        DATALOW;
+    delay(500);
+    // DIP3 (TOOL2)
+    DATAHIGH;
+    delay(250);
+    if (tool2) DATAHIGH; else DATALOW;
+    delay(250);
+        DATALOW;
+    delay(500);
+    // DIP4 (TOOL1)
+    DATAHIGH;
+    delay(250);
+    if (tool1) DATAHIGH; else DATALOW;
+    delay(250);
+        DATALOW;
+    delay(500);
+    // DIP5 (TOOL0)
+    DATAHIGH;
+    delay(250);
+    if (tool0) DATAHIGH; else DATALOW;
+    delay(250);
+        DATALOW;
+    delay(500);
+    // Pause between sequences
+    DATALOW;
+    delay(4000);
+  }
   
   // Build the base packet with FIXED preamble
   unsigned short basePacket = FIXED;
@@ -236,18 +278,17 @@ void setup()
   // find more in power.h
 
   pinMode(PIN_EN, OUTPUT);
-  pinMode(PIN_FSK, OUTPUT);
-  pinMode(PIN_ASK, OUTPUT);
+  pinMode(PIN_DATA, OUTPUT);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_EXT_TRIG, INPUT);
   
-  // Configure DIP switch pins as inputs (external pulldown resistors)
-  pinMode(PIN_DIP1, INPUT);
-  pinMode(PIN_DIP2, INPUT);
-  pinMode(PIN_DIP3, INPUT);
-  pinMode(PIN_DIP4, INPUT);
-  pinMode(PIN_DIP5, INPUT);
-  
+  // Configure DIP switch pins as inputs
+  pinMode(PIN_DIP1, INPUT_PULLUP);
+  pinMode(PIN_DIP2, INPUT_PULLUP);
+  pinMode(PIN_DIP3, INPUT_PULLUP);
+  pinMode(PIN_DIP4, INPUT_PULLUP);
+  pinMode(PIN_DIP5, INPUT_PULLUP);
+
   // Read DIP switches and configure packets - only needs to be done once at startup
   // The AVR maintains state and ISRs will use the globally set packet values
   readDIPSwitchAndConfigurePackets();
@@ -278,7 +319,7 @@ ISR(TIMER1_COMPA_vect)
     else if (tickCounter == 0 && sendLow == 1)
     {
       sendLow = 0;
-      ASKLOW;
+      DATALOW;
       if (currentBit < 6) // Preamble
         tickCounter = SHORTPACKETUS / TWEAK;
       else // We are done the preamble, go to fixed width
@@ -304,7 +345,7 @@ ISR(TIMER1_COMPA_vect)
     if (currentPacket & (0x8000 >> currentBit))
     {
       // We need to send a 1 which means be high for LONGPACKETUS, then be low for SHORTPACKETUS
-      ASKHIGH;
+      DATAHIGH;
       // If we are doing the preamble, then we use the weird longer length
       if (currentBit < 6)
         tickCounter = WEIRDLONGPACKETUS / TWEAK;
@@ -315,7 +356,7 @@ ISR(TIMER1_COMPA_vect)
     }
     else
     {
-      ASKHIGH;
+      DATAHIGH;
       tickCounter = SHORTPACKETUS / TWEAK;
       sendLow = 1;
     }
@@ -369,8 +410,7 @@ void sendPacket(unsigned short whichPacket)
 // warm-up transmitter and enable bit-period interrupt
 void enableTX()
 {
-  FSKLOW;
-  ASKLOW;
+  DATALOW;
   ENHIGH;
 
   delayMicroseconds(50); // warm-up time
@@ -381,9 +421,8 @@ void enableTX()
 // disable transmitter and disable bit-period interrupt
 void disableTX()
 {
-  FSKLOW;
+  DATALOW;
   ENLOW;
-  ASKLOW;
   transmitting = false;
   power_timer1_disable();
 }
